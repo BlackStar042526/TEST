@@ -12,4 +12,4 @@ __pycache__/
 .vscode/
 
 # 含明文 LAADS 令牌的历史版本，请先移除令牌再提交
-archive/02_atmcorrection_6s_v1.1.0.py
+02_atmospheric_correction/02_atmcorrection_6s_v1.1.0.py

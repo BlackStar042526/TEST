@@ -113,17 +113,17 @@ VNIR_SWIR_SPLIT_UM = 1.05      # 回退时按该波长分 VNIR/SWIR
 # 参数：Al-OH 矿物清单（库记录首词必须精确等于英文名）
 # 值：(中文名, 绘图颜色)
 TARGET_MINERALS = [
-   # ("Kaolinite",       "高岭石",       "#5b7db1"),
-    #("Dickite",         "地开石",       "#e3a857"),
-    #("Halloysite",      "埃洛石",       "#8a5a44"),
-   # ("Illite",          "伊利石",       "#2a9d8f"),
+    ("Kaolinite",       "高岭石",       "#5b7db1"),
+    ("Dickite",         "地开石",       "#e3a857"),
+    ("Halloysite",      "埃洛石",       "#8a5a44"),
+    ("Illite",          "伊利石",       "#2a9d8f"),
     ("Muscovite",       "白云母/绢云母", "#e76f51"),
-   # ("Montmorillonite", "蒙脱石",       "#9b5de5"),
-    #("Beidellite",      "贝得石",       "#f4a261"),
-    #("Pyrophyllite",    "叶蜡石",       "#4d908e"),
-   # ("Alunite",         "明矾石",       "#f94144"),
-    #("Diaspore",        "硬水铝石",     "#577590"),
-    #("Topaz",           "黄玉",         "#43aa8b"),
+    ("Montmorillonite", "蒙脱石",       "#9b5de5"),
+    ("Beidellite",      "贝得石",       "#f4a261"),
+    ("Pyrophyllite",    "叶蜡石",       "#4d908e"),
+    ("Alunite",         "明矾石",       "#f94144"),
+    ("Diaspore",        "硬水铝石",     "#577590"),
+    ("Topaz",           "黄玉",         "#43aa8b"),
 ]
 MINERAL_EN = [item[0] for item in TARGET_MINERALS]              # 英文名列表（决定类别号）
 MINERAL_CN = {item[0]: item[1] for item in TARGET_MINERALS}     # 英文名 → 中文名

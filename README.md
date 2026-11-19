@@ -28,7 +28,7 @@ conda activate hsi
 或在脚本里直接用解释器全路径：
 
 ```powershell
-& E:\ProgramData\anaconda3\envs\hsi\python.exe .\01_calibration_badbands\01_calibration_badbands_v1.0.3.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe .\01_calibration_badbands\01_calibration_badbands_v1.0.5.py
 ```
 
 
@@ -41,35 +41,41 @@ conda activate hsi
 testcode/
 ├── 00_preview_jpg/
 │   ├── 00_extract_georeferenced_jpg_v1.0.0.py                       原始版
-│   └── 00_extract_georeferenced_jpg_v1.0.1.py                       ← 当前版本（日志/标注）
+│   ├── 00_extract_georeferenced_jpg_v1.0.1.py                       日志补阶段耗时与汇总
+│   └── 00_extract_georeferenced_jpg_v1.0.2.py                       ← 当前版本（逐行行尾备注）
 ├── 01_calibration_badbands/
 │   ├── 01_calibration_badbands_v1.0.0.py
 │   ├── 01_calibration_badbands_v1.0.1.py
 │   ├── 01_calibration_badbands_v1.0.2.py
 │   ├── 01_calibration_badbands_v1.0.3.py
-│   └── 01_calibration_badbands_v1.0.4.py                            ← 当前版本（日志/标注）
+│   ├── 01_calibration_badbands_v1.0.4.py                            日志/标注
+│   └── 01_calibration_badbands_v1.0.5.py                            ← 当前版本（逐行行尾备注）
 ├── 02_atmospheric_correction/
 │   ├── 02_atmospheric_correction_v1.0.0.py
 │   ├── 02_atmcorrection_6s_v1.1.0.py
 │   ├── 02_atmospheric_correction_v1.1.1.py
 │   ├── 02_atmospheric_correction_v1.1.2.py
-│   └── 02_atmospheric_correction_v1.1.3.py                          ← 当前版本（日志/标注）
+│   ├── 02_atmospheric_correction_v1.1.3.py                          日志/标注
+│   └── 02_atmospheric_correction_v1.1.4.py                          ← 当前版本（逐行行尾备注）
 ├── 03_clip_by_area/
 │   ├── 03_clip_by_area_v2.0.py
-│   ├── 03_clip_by_area_v2.1.py                                      ← 当前版本（日志/标注）
+│   ├── 03_clip_by_area_v2.1.py                                      日志/标注
+│   ├── 03_clip_by_area_v2.2.py                                      ← 当前版本（逐行行尾备注）
 │   └── 03_orthorectify_clip_mosaic_v1.0.py                          区域镶嵌实现（未参与主链）
 ├── 04_aloh_mineral_extraction/
 │   ├── 04_aloh_mineral_extraction_v1.0.0.py                         原始版（仅支持 mosaic 输入）
 │   ├── 04_aloh_mineral_extraction_v1.1.0.py                         支持裁剪成果输入
 │   ├── 04_aloh_mineral_extraction_v1.1.1.py                         增强运行日志
 │   ├── 04_aloh_mineral_extraction_v1.1.2.py                         代码标注
-│   └── 04_aloh_mineral_extraction_v1.1.3.py                         ← 当前版本（精简开头注释 + 阶段耗时）
+│   ├── 04_aloh_mineral_extraction_v1.1.3.py                         精简开头注释 + 阶段耗时
+│   └── 04_aloh_mineral_extraction_v1.1.4.py                         ← 当前版本（逐行行尾备注）
 ├── 05_mnf_ppi_mtmf/
 │   ├── 05_mnf_ppi_mtmf_v1.0.0.py                                    原始版（仅支持 mosaic 输入）
 │   ├── 05_mnf_ppi_mtmf_v1.1.0.py                                    支持裁剪成果输入
 │   ├── 05_mnf_ppi_mtmf_v1.1.1.py                                    增强运行日志
 │   ├── 05_mnf_ppi_mtmf_v1.1.2.py                                    代码标注
-│   └── 05_mnf_ppi_mtmf_v1.1.3.py                                    ← 当前版本（精简开头注释）
+│   ├── 05_mnf_ppi_mtmf_v1.1.3.py                                    精简开头注释
+│   └── 05_mnf_ppi_mtmf_v1.1.4.py                                    ← 当前版本（逐行行尾备注）
 ├── requirements.txt
 └── README.md
 ```
@@ -87,16 +93,21 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 保留在配置区分节注释与函数说明中），并在 04 的区域处理流程中补上各阶段耗时
 日志；算法与输出未变。
 
+当前 6 个脚本（00 v1.0.2、01 v1.0.5、02 v1.1.4、03 v2.2、04 v1.1.4、
+05 v1.1.4）统一补充了**逐行行尾中文备注**：在赋值、判断、循环、GDAL/NumPy
+调用、写盘、异常分支等实质代码行末标注用途，便于逐行阅读；原有的分节注释、
+①…⑦ 步骤标记与函数说明全部保留，算法、输出文件名与格式与上一版完全一致。
+
 ## 版本一览
 
 | 步骤 | 当前使用 | 同目录其他版本 | 说明 |
 |---|---|---|---|
-| 00 | `00_extract_georeferenced_jpg_v1.0.1.py` | v1.0.0 | 日志补阶段耗时与汇总 |
-| 01 | `01_calibration_badbands_v1.0.4.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 | 含 RPC 偏差修正与质检 |
-| 02 | `02_atmospheric_correction_v1.1.3.py` | v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | 6S 大气校正 |
-| 03 | `03_clip_by_area_v2.1.py` | v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | 主链只裁剪；镶嵌版未参与主链 |
-| 04 | `04_aloh_mineral_extraction_v1.1.3.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 | v1.1.3 精简开头注释、补阶段耗时 |
-| 05 | `05_mnf_ppi_mtmf_v1.1.3.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 | v1.1.3 精简开头注释 |
+| 00 | `00_extract_georeferenced_jpg_v1.0.2.py` | v1.0.0 / v1.0.1 | v1.0.2 逐行行尾备注 |
+| 01 | `01_calibration_badbands_v1.0.5.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 / v1.0.4 | v1.0.5 逐行行尾备注 |
+| 02 | `02_atmospheric_correction_v1.1.4.py` | v1.1.3、v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | v1.1.4 逐行行尾备注 |
+| 03 | `03_clip_by_area_v2.2.py` | v2.1、v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | v2.2 逐行行尾备注；镶嵌版未参与主链 |
+| 04 | `04_aloh_mineral_extraction_v1.1.4.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 | v1.1.4 逐行行尾备注 |
+| 05 | `05_mnf_ppi_mtmf_v1.1.4.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 | v1.1.4 逐行行尾备注 |
 
 ## 处理流程
 
@@ -121,13 +132,13 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 conda activate hsi
 cd E:\ZhouYang\test\code\testcode
 
-python 00_preview_jpg/00_extract_georeferenced_jpg_v1.0.1.py
-python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py --dry-run
-python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py
-python 02_atmospheric_correction/02_atmospheric_correction_v1.1.3.py
-python 03_clip_by_area/03_clip_by_area_v2.1.py --area JLHK
-python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.3.py
-python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.3.py
+python 00_preview_jpg/00_extract_georeferenced_jpg_v1.0.2.py
+python 01_calibration_badbands/01_calibration_badbands_v1.0.5.py --dry-run
+python 01_calibration_badbands/01_calibration_badbands_v1.0.5.py
+python 02_atmospheric_correction/02_atmospheric_correction_v1.1.4.py
+python 03_clip_by_area/03_clip_by_area_v2.2.py --area JLHK
+python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.4.py
+python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.4.py
 ```
 
 ## 数据目录约定

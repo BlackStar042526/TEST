@@ -40,19 +40,23 @@ conda activate hsi
 ```
 testcode/
 ├── 00_preview_jpg/
-│   └── 00_extract_georeferenced_jpg_v1.0.0.py                       快视图 JPG + SHP 边界 + 地理参考
+│   ├── 00_extract_georeferenced_jpg_v1.0.0.py                       原始版
+│   └── 00_extract_georeferenced_jpg_v1.0.1.py                       ← 当前版本（日志/标注）
 ├── 01_calibration_badbands/
 │   ├── 01_calibration_badbands_v1.0.0.py
 │   ├── 01_calibration_badbands_v1.0.1.py
 │   ├── 01_calibration_badbands_v1.0.2.py
-│   └── 01_calibration_badbands_v1.0.3.py                            ← 当前版本
+│   ├── 01_calibration_badbands_v1.0.3.py
+│   └── 01_calibration_badbands_v1.0.4.py                            ← 当前版本（日志/标注）
 ├── 02_atmospheric_correction/
 │   ├── 02_atmospheric_correction_v1.0.0.py
 │   ├── 02_atmcorrection_6s_v1.1.0.py
 │   ├── 02_atmospheric_correction_v1.1.1.py
-│   └── 02_atmospheric_correction_v1.1.2.py                          ← 当前版本
+│   ├── 02_atmospheric_correction_v1.1.2.py
+│   └── 02_atmospheric_correction_v1.1.3.py                          ← 当前版本（日志/标注）
 ├── 03_clip_by_area/
-│   ├── 03_clip_by_area_v2.0.py                                      ← 当前版本（仅裁剪）
+│   ├── 03_clip_by_area_v2.0.py
+│   ├── 03_clip_by_area_v2.1.py                                      ← 当前版本（日志/标注）
 │   └── 03_orthorectify_clip_mosaic_v1.0.py                          区域镶嵌实现（未参与主链）
 ├── 04_aloh_mineral_extraction/
 │   ├── 04_aloh_mineral_extraction_v1.0.0.py                         原始版（仅支持 mosaic 输入）
@@ -73,14 +77,18 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 错误堆栈、失败区域汇总）；v1.1.2 补充代码结构与算法注释（函数说明、步骤编号、
 关键公式解释），处理算法未变。
 
+00～03 的最新版本同样只做“整理”：补充函数中文说明与步骤编号（①…⑦）、
+阶段耗时/进度日志、失败场景汇总与日志文件路径；算法、输出文件名和格式
+与上一版一致，原版本全部保留。
+
 ## 版本一览
 
 | 步骤 | 当前使用 | 同目录其他版本 | 说明 |
 |---|---|---|---|
-| 00 | `00_extract_georeferenced_jpg_v1.0.0.py` | — | 唯一版本 |
-| 01 | `01_calibration_badbands_v1.0.3.py` | v1.0.0 / v1.0.1 / v1.0.2 | 含 RPC 偏差修正与质检 |
-| 02 | `02_atmospheric_correction_v1.1.2.py` | v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | 6S 大气校正 |
-| 03 | `03_clip_by_area_v2.0.py` | `03_orthorectify_clip_mosaic_v1.0.py` | 主链只裁剪；镶嵌版未参与主链 |
+| 00 | `00_extract_georeferenced_jpg_v1.0.1.py` | v1.0.0 | 日志补阶段耗时与汇总 |
+| 01 | `01_calibration_badbands_v1.0.4.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 | 含 RPC 偏差修正与质检 |
+| 02 | `02_atmospheric_correction_v1.1.3.py` | v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | 6S 大气校正 |
+| 03 | `03_clip_by_area_v2.1.py` | v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | 主链只裁剪；镶嵌版未参与主链 |
 | 04 | `04_aloh_mineral_extraction_v1.1.2.py` | v1.0.0 / v1.1.0 / v1.1.1 | v1.1.2 代码标注 |
 | 05 | `05_mnf_ppi_mtmf_v1.1.2.py` | v1.0.0 / v1.1.0 / v1.1.1 | v1.1.2 代码标注 |
 
@@ -107,11 +115,11 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 conda activate hsi
 cd E:\ZhouYang\test\code\testcode
 
-python 00_preview_jpg/00_extract_georeferenced_jpg_v1.0.0.py
-python 01_calibration_badbands/01_calibration_badbands_v1.0.3.py --dry-run
-python 01_calibration_badbands/01_calibration_badbands_v1.0.3.py
-python 02_atmospheric_correction/02_atmospheric_correction_v1.1.2.py
-python 03_clip_by_area/03_clip_by_area_v2.0.py --area JLHK
+python 00_preview_jpg/00_extract_georeferenced_jpg_v1.0.1.py
+python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py --dry-run
+python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py
+python 02_atmospheric_correction/02_atmospheric_correction_v1.1.3.py
+python 03_clip_by_area/03_clip_by_area_v2.1.py --area JLHK
 python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.2.py
 python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.2.py
 ```

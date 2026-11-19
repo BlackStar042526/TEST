@@ -1,0 +1,7 @@
+# GDAL 建议用 conda 安装：conda install -c conda-forge gdal
+gdal>=3.4
+numpy>=1.21
+scipy>=1.7
+matplotlib>=3.5
+Pillow>=9.0
+Py6S>=1.8

@@ -62,12 +62,14 @@ testcode/
 │   ├── 04_aloh_mineral_extraction_v1.0.0.py                         原始版（仅支持 mosaic 输入）
 │   ├── 04_aloh_mineral_extraction_v1.1.0.py                         支持裁剪成果输入
 │   ├── 04_aloh_mineral_extraction_v1.1.1.py                         增强运行日志
-│   └── 04_aloh_mineral_extraction_v1.1.2.py                         ← 当前版本（代码标注）
+│   ├── 04_aloh_mineral_extraction_v1.1.2.py                         代码标注
+│   └── 04_aloh_mineral_extraction_v1.1.3.py                         ← 当前版本（精简开头注释 + 阶段耗时）
 ├── 05_mnf_ppi_mtmf/
 │   ├── 05_mnf_ppi_mtmf_v1.0.0.py                                    原始版（仅支持 mosaic 输入）
 │   ├── 05_mnf_ppi_mtmf_v1.1.0.py                                    支持裁剪成果输入
 │   ├── 05_mnf_ppi_mtmf_v1.1.1.py                                    增强运行日志
-│   └── 05_mnf_ppi_mtmf_v1.1.2.py                                    ← 当前版本（代码标注）
+│   ├── 05_mnf_ppi_mtmf_v1.1.2.py                                    代码标注
+│   └── 05_mnf_ppi_mtmf_v1.1.3.py                                    ← 当前版本（精简开头注释）
 ├── requirements.txt
 └── README.md
 ```
@@ -81,6 +83,10 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 阶段耗时/进度日志、失败场景汇总与日志文件路径；算法、输出文件名和格式
 与上一版一致，原版本全部保留。
 
+04 / 05 的 v1.1.3 按同一风格把开头的大段说明压缩为简短 docstring（详细内容
+保留在配置区分节注释与函数说明中），并在 04 的区域处理流程中补上各阶段耗时
+日志；算法与输出未变。
+
 ## 版本一览
 
 | 步骤 | 当前使用 | 同目录其他版本 | 说明 |
@@ -89,8 +95,8 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 | 01 | `01_calibration_badbands_v1.0.4.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 | 含 RPC 偏差修正与质检 |
 | 02 | `02_atmospheric_correction_v1.1.3.py` | v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | 6S 大气校正 |
 | 03 | `03_clip_by_area_v2.1.py` | v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | 主链只裁剪；镶嵌版未参与主链 |
-| 04 | `04_aloh_mineral_extraction_v1.1.2.py` | v1.0.0 / v1.1.0 / v1.1.1 | v1.1.2 代码标注 |
-| 05 | `05_mnf_ppi_mtmf_v1.1.2.py` | v1.0.0 / v1.1.0 / v1.1.1 | v1.1.2 代码标注 |
+| 04 | `04_aloh_mineral_extraction_v1.1.3.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 | v1.1.3 精简开头注释、补阶段耗时 |
+| 05 | `05_mnf_ppi_mtmf_v1.1.3.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 | v1.1.3 精简开头注释 |
 
 ## 处理流程
 
@@ -120,8 +126,8 @@ python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py --dry-run
 python 01_calibration_badbands/01_calibration_badbands_v1.0.4.py
 python 02_atmospheric_correction/02_atmospheric_correction_v1.1.3.py
 python 03_clip_by_area/03_clip_by_area_v2.1.py --area JLHK
-python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.2.py
-python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.2.py
+python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.3.py
+python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.3.py
 ```
 
 ## 数据目录约定

@@ -16,7 +16,11 @@ ZY1E AHSI 步骤4.5：MNF 去噪降维 + PPI/n 维端元初选 + 包络线去除
     5. 与步骤4 的 CR-SAM 分类图对比（混淆矩阵、一致率）。
 
 输入：
-    ZY1E_output_step3/<区>/mosaic/{mosaic_reflectance.tif, mosaic_mask.tif,
+    步骤3 成果根目录下每区支持两种输入（与步骤4 一致）：
+    方式 A（步骤3 直接产物）：<区>/*_clip.tif 逐景裁剪反射率，
+        首次运行用 gdal.BuildVRT 合并为虚拟镶嵌并生成掩膜，
+        缓存到 <OUT_ROOT>/_cache/<区>/；波长取自步骤1/2 的 wavelengths_clean.npy；
+    方式 B（已做镶嵌）：<区>/mosaic/{mosaic_reflectance.tif, mosaic_mask.tif,
                                     wavelengths_clean.npy}
     ZY1E_output_step4/_library/ahsi_library.npy + ahsi_library_meta.csv（可选）
 输出：ZY1E_output_step4_mnf/<区>/
@@ -89,9 +93,9 @@ gdal.UseExceptions()
 gdal.PushErrorHandler("CPLQuietErrorHandler")
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  【配置区】                                                    ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 配置区（按需修改）
+# =================================================================
 
 IN_ROOT_STEP3 = r"E:\ZhouYang\test\ZY1E_output_step3"
 STEP4_ROOT = r"E:\ZhouYang\test\ZY1E_output_step4"
@@ -103,12 +107,23 @@ MASK_NAME = "mosaic_mask.tif"
 REFL_NAME = "mosaic_reflectance.tif"
 WL_NAME = "wavelengths_clean.npy"
 
+# 步骤3 直接产物（逐景裁剪反射率）后缀；旧后缀自动兼容
+STEP3_CLIP_SUFFIXES = ("_cal_badband_ortho_atmcorr_clip.tif",
+                       "_ortho_atmcorr_clip.tif")
+# 波长来源：优先步骤1，其次步骤2（<场景名>/wavelengths_clean.npy）
+STEP1_ROOT = r"E:\ZhouYang\test\ZY1E_output_step1"
+STEP2_ROOT = r"E:\ZhouYang\test\ZY1E_output_step2"
+CACHE_DIR_NAME = "_cache"
+CACHE_VRT_NAME = "mosaic_reflectance.vrt"
+MASK_SAMPLE_BANDS = 12
+
 MATCH_MAX_WAVELENGTH_UM = 2.30     # 2.35 μm 以后信号到噪声底，不参与计算
 # MNF/PPI/MTMF 只做 2.0~2.30 μm 的 SWIR 子集：可见光-近红外被植被/阴影主导，
 # 用全谱会让“不可行性”普遍偏大，淹没 Al-OH 2.2 μm 的微弱特征。
 MNF_BAND_MIN_UM = 2.00
 MNF_BAND_MAX_UM = 2.30
 REFL_MIN, REFL_MAX = -0.05, 1.20
+NODATA_THRESHOLD = -9000.0
 NODATA_OUT = -9999.0
 BLOCK_ROWS = 96
 
@@ -144,9 +159,9 @@ CLASS_NODATA = 255
 LOG_NAME = "zy1e.step4_5"
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  工具                                                         ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 工具
+# =================================================================
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
@@ -194,12 +209,153 @@ def read_bands(ds, band_indices, y0, rows):
     return cube[np.asarray(band_indices)].reshape(len(band_indices), -1).astype(np.float64)
 
 
+def _clip_suffix(filename):
+    for suffix in STEP3_CLIP_SUFFIXES:
+        if filename.endswith(suffix):
+            return suffix
+    return None
+
+
+def area_clip_files(in_root, area):
+    """列出 <in_root>/<area>/ 下的逐景裁剪反射率（按文件名排序）。"""
+    area_dir = os.path.join(in_root, area)
+    if not os.path.isdir(area_dir):
+        return []
+    return [os.path.join(area_dir, name) for name in sorted(os.listdir(area_dir))
+            if _clip_suffix(name) and os.path.isfile(os.path.join(area_dir, name))]
+
+
+def _scene_wavelengths_path(scene):
+    for root in (STEP1_ROOT, STEP2_ROOT):
+        path = os.path.join(root, scene, "wavelengths_clean.npy")
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def load_area_wavelengths(clips, band_count=None):
+    """由裁剪文件名反推场景名，读取步骤1/2 的 wavelengths_clean.npy。"""
+    for path in clips:
+        name = os.path.basename(path)
+        suffix = _clip_suffix(name)
+        scene = name[:-len(suffix)] if suffix else os.path.splitext(name)[0]
+        wl_path = _scene_wavelengths_path(scene)
+        if wl_path is None:
+            continue
+        wavelengths = np.load(wl_path).astype(np.float64)
+        if wavelengths.ndim != 1:
+            raise ValueError("波长文件不是 1 维: %s" % wl_path)
+        if band_count is not None and wavelengths.size != band_count:
+            raise ValueError("裁剪影像波段数 %d != 波长数 %d（%s）",
+                             band_count, wavelengths.size, wl_path)
+        return wavelengths, scene
+    raise FileNotFoundError(
+        "未找到裁剪场景对应的 wavelengths_clean.npy（查过步骤1/2 目录）")
+
+
+def build_area_vrt(clips, vrt_path):
+    """用逐景裁剪成果构建虚拟镶嵌（不落地大栅格）。"""
+    tmp_path = vrt_path + ".tmp.vrt"
+    options = gdal.BuildVRTOptions(resolution="highest", VRTNodata=NODATA_OUT)
+    vrt = gdal.BuildVRT(tmp_path, clips, options=options)
+    if vrt is None:
+        raise RuntimeError("构建 VRT 失败: %s" % vrt_path)
+    vrt.FlushCache()
+    vrt = None
+    os.replace(tmp_path, vrt_path)
+
+
+def build_area_mask(vrt_path, mask_path, logger):
+    """按抽样波段的有效值与反射率范围生成 0/1 掩膜（1=清晰像元）。"""
+    ds = gdal.Open(vrt_path)
+    if ds is None:
+        raise RuntimeError("无法打开镶嵌: %s" % vrt_path)
+    width, height, nbands = ds.RasterXSize, ds.RasterYSize, ds.RasterCount
+    count = min(MASK_SAMPLE_BANDS, nbands)
+    sample = np.unique(np.linspace(0, nbands - 1, count).astype(int))
+    tmp_path = mask_path + ".tmp.tif"
+    driver = gdal.GetDriverByName("GTiff")
+    out = driver.Create(tmp_path, width, height, 1, gdal.GDT_Byte,
+                        options=["TILED=YES", "COMPRESS=DEFLATE", "ZLEVEL=6"])
+    if out is None:
+        raise RuntimeError("无法创建掩膜: %s" % mask_path)
+    out.SetGeoTransform(ds.GetGeoTransform())
+    out.SetProjection(ds.GetProjection())
+    band = out.GetRasterBand(1)
+    band.SetNoDataValue(0)
+    clear_total = 0
+    for y in range(0, height, BLOCK_ROWS):
+        rows = min(BLOCK_ROWS, height - y)
+        valid = np.ones((rows, width), bool)
+        low = np.full((rows, width), np.inf)
+        high = np.full((rows, width), -np.inf)
+        for index in sample:
+            array = ds.GetRasterBand(int(index) + 1).ReadAsArray(0, y, width, rows)
+            array = np.asarray(array, np.float64)
+            ok = valid_pixels(array)
+            valid &= ok
+            low = np.where(ok, np.minimum(low, array), low)
+            high = np.where(ok, np.maximum(high, array), high)
+        valid &= (low > REFL_MIN) & (high < REFL_MAX)
+        mask = valid.astype(np.uint8)
+        band.WriteArray(mask, 0, y)
+        clear_total += int(mask.sum())
+    out.FlushCache()
+    out = None
+    ds = None
+    os.replace(tmp_path, mask_path)
+    logger.info("生成掩膜: %s（清晰像元 %.1f%%）",
+                mask_path, 100.0 * clear_total / max(1, width * height))
+
+
+def resolve_area_inputs(in_root, area, cache_root, overwrite, logger, build=True):
+    """解析区域输入：优先 mosaic 三件套，否则由步骤3 裁剪成果构建 VRT + 掩膜。"""
+    mosaic_dir = os.path.join(in_root, area, "mosaic")
+    refl_path = os.path.join(mosaic_dir, REFL_NAME)
+    mask_path = os.path.join(mosaic_dir, MASK_NAME)
+    wl_path = os.path.join(mosaic_dir, WL_NAME)
+    if (os.path.isfile(refl_path) and os.path.isfile(mask_path)
+            and os.path.isfile(wl_path)):
+        return {"refl_path": refl_path, "mask_path": mask_path,
+                "wavelengths": np.load(wl_path).astype(np.float64),
+                "source": "mosaic", "scenes": []}
+
+    clips = area_clip_files(in_root, area)
+    if not clips:
+        raise FileNotFoundError(
+            "区域 %s 下既没有 mosaic/ 三件套，也没有步骤3 裁剪成果" % area)
+    probe = gdal.Open(clips[0])
+    if probe is None:
+        raise RuntimeError("无法打开裁剪成果: %s" % clips[0])
+    band_count = probe.RasterCount
+    probe = None
+    wavelengths, _ = load_area_wavelengths(clips, band_count)
+
+    cache_dir = os.path.join(cache_root, CACHE_DIR_NAME, area)
+    vrt_path = os.path.join(cache_dir, CACHE_VRT_NAME)
+    cache_mask = os.path.join(cache_dir, MASK_NAME)
+    if not build:
+        return {"refl_path": vrt_path, "mask_path": cache_mask,
+                "wavelengths": wavelengths, "source": "clip", "scenes": clips}
+
+    os.makedirs(cache_dir, exist_ok=True)
+    if overwrite or not os.path.isfile(vrt_path):
+        build_area_vrt(clips, vrt_path)
+        logger.info("[%s] 合并 %d 景裁剪成果 -> %s", area, len(clips), vrt_path)
+    if overwrite or not os.path.isfile(cache_mask):
+        build_area_mask(vrt_path, cache_mask, logger)
+    return {"refl_path": vrt_path, "mask_path": cache_mask,
+            "wavelengths": wavelengths, "source": "clip", "scenes": clips}
+
+
 def discover_areas(in_root, patterns=None):
     import fnmatch
     areas = []
     for name in sorted(os.listdir(in_root)):
-        mosaic = os.path.join(in_root, name, "mosaic")
-        if not os.path.isfile(os.path.join(mosaic, REFL_NAME)):
+        if not os.path.isdir(os.path.join(in_root, name)):
+            continue
+        has_mosaic = os.path.isfile(os.path.join(in_root, name, "mosaic", REFL_NAME))
+        if not has_mosaic and not area_clip_files(in_root, name):
             continue
         if patterns and not any(fnmatch.fnmatch(name, p) for p in patterns):
             continue
@@ -207,9 +363,9 @@ def discover_areas(in_root, patterns=None):
     return areas
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  采样：背景协方差 / 噪声协方差                                  ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 采样：背景协方差 / 噪声协方差
+# =================================================================
 
 def sample_stats(ds, mask_ds, band_idx, target=STATS_SAMPLE_PIXELS):
     """抽稀行采样有效像元，同时用相邻像元差估计噪声协方差。"""
@@ -281,9 +437,9 @@ def mnf_transform(samples, noise_diffs, variance_keep=MNF_VARIANCE_KEEP):
     return mu, matrix, eigvals[:k], k, float(cumulative[k - 1])
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  PPI + n 维端元初选                                           ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# PPI + n 维端元初选
+# =================================================================
 
 def ppi_extract(scores, n_skewers=PPI_SKEWERS, rng=None):
     rng = rng or np.random.default_rng(42)
@@ -331,9 +487,9 @@ def select_endmembers(scores, counts, candidates=PPI_CANDIDATES, hull_dims=PPI_H
     return np.asarray(chosen, np.int64)
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  包络线去除（凸包）                                           ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 包络线去除（凸包）
+# =================================================================
 
 def convex_hull_continuum(wavelength, spectrum):
     """对单条光谱做上凸包（连续统），返回与 spectrum 同长度的连续统。"""
@@ -377,9 +533,9 @@ def continuum_depth(wavelength, spectrum, feature_range=(2.12, 2.28)):
     return float(depth[index]), float(x[mask][index])
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  主处理                                                       ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 主处理
+# =================================================================
 
 def create_gtiff(path, width, height, nbands, dtype, geo, projection, nodata, descs=None):
     creation = ["BIGTIFF=IF_SAFER", "COMPRESS=DEFLATE", "ZLEVEL=6", "INTERLEAVE=BAND"]
@@ -409,12 +565,11 @@ def load_library():
     return library, class_ids
 
 
-def process_area(area, in_root, out_root, args, logger):
+def process_area(area, inputs, out_root, args, logger):
     started = time.time()
-    mosaic = os.path.join(in_root, area, "mosaic")
-    refl_path = os.path.join(mosaic, REFL_NAME)
-    mask_path = os.path.join(mosaic, MASK_NAME)
-    wl = np.load(os.path.join(mosaic, WL_NAME)).astype(np.float64)
+    refl_path = inputs["refl_path"]
+    mask_path = inputs["mask_path"]
+    wl = inputs["wavelengths"]
     out_dir = os.path.join(out_root, area)
     if not args.overwrite and os.path.isfile(os.path.join(out_dir, "mtmf_class.tif")):
         logger.info("[%s] 跳过（成果已存在）", area)
@@ -821,8 +976,17 @@ def main(argv=None):
 
     if args.dry_run:
         for area in areas:
-            logger.info("  %-10s <- %s", area,
-                        os.path.join(args.in_root, area, "mosaic"))
+            try:
+                inputs = resolve_area_inputs(os.path.abspath(args.in_root), area,
+                                             out_root, False, logger, build=False)
+            except Exception as exc:
+                logger.error("  %-10s 输入不可用: %s", area, exc)
+                continue
+            if inputs["source"] == "mosaic":
+                logger.info("  %-10s <- %s", area, inputs["refl_path"])
+            else:
+                logger.info("  %-10s <- %d 景裁剪成果（将合并为 %s）",
+                            area, len(inputs["scenes"]), inputs["refl_path"])
         logger.info("dry-run 结束")
         return 0
 
@@ -830,7 +994,9 @@ def main(argv=None):
         logger.info("-" * 72)
         logger.info("处理: %s", area)
         try:
-            process_area(area, os.path.abspath(args.in_root), out_root, args, logger)
+            inputs = resolve_area_inputs(os.path.abspath(args.in_root), area,
+                                         out_root, args.overwrite, logger)
+            process_area(area, inputs, out_root, args, logger)
         except Exception as exc:
             logger.exception("[%s] 失败", area)
             return 1

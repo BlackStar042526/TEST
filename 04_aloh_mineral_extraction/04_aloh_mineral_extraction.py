@@ -4,9 +4,9 @@
 ===================================
 ZY1E AHSI 步骤4：Al-OH 蚀变组合提取（USGS splib07a 光谱库 + SAM / SFF / MF）
 
-本步读取步骤3 的“分析就绪”区域镶嵌反射率，把 USGS splib07a 光谱库
-（ChapterM_Minerals 中的 Al-OH 蚀变矿物）重采样到 AHSI 的 152 个波段，
-逐像元做：
+本步读取步骤3 的区域反射率（裁剪成果或 mosaic），把 USGS splib07a 光谱库
+（ChapterM_Minerals 中的 Al-OH 蚀变矿物）重采样到 AHSI 保留的 142 个波段
+（原始 166 波段，步骤1 剔除 24 个坏波段），逐像元做：
     - 连续统去除 Al-OH 2.2 μm 吸收特征（深度 / 位置 / 宽度）
     - 连续统去除后的 SAM（CR-SAM，逐矿物类；消除反照率与大气残差影响）
     - SFF 连续统去除光谱特征拟合（丰度代理 + 拟合残差）
@@ -15,10 +15,19 @@ ZY1E AHSI 步骤4：Al-OH 蚀变组合提取（USGS splib07a 光谱库 + SAM / S
 
 输入
 ----
-步骤3 输出根目录 IN_ROOT_STEP3 下每区一个子文件夹（本步只认 mosaic/）：
-    <IN_ROOT_STEP3>/<区名>/mosaic/mosaic_reflectance.tif   152 波段区域镶嵌反射率
+步骤3 输出根目录 IN_ROOT_STEP3 下每区一个子文件夹，支持两种输入：
+
+方式 A（推荐，步骤3 直接产物）：<区名>/*_clip.tif，逐景裁剪反射率
+    <IN_ROOT_STEP3>/<区名>/<景名>_cal_badband_ortho_atmcorr_clip.tif
+    <IN_ROOT_STEP3>/<区名>/<景名>_ortho_atmcorr_clip.tif（旧后缀，自动兼容）
+    本步首次运行时用 gdal.BuildVRT 合并为虚拟镶嵌，并按有效值生成掩膜，
+    缓存到 <OUT_ROOT_STEP4>/_cache/<区名>/（mosaic_reflectance.vrt + mosaic_mask.tif）；
+    波长取自步骤1/2 同景目录的 wavelengths_clean.npy。加 --overwrite 可重建缓存。
+
+方式 B（已做镶嵌）：<区名>/mosaic/ 三件套
+    <IN_ROOT_STEP3>/<区名>/mosaic/mosaic_reflectance.tif   142 波段区域镶嵌反射率
     <IN_ROOT_STEP3>/<区名>/mosaic/mosaic_mask.tif          0=无数据 1=清晰 2=云填充 3=云影填充
-    <IN_ROOT_STEP3>/<区名>/mosaic/wavelengths_clean.npy    152 个波段中心波长（μm）
+    <IN_ROOT_STEP3>/<区名>/mosaic/wavelengths_clean.npy    142 个波段中心波长（μm）
     <IN_ROOT_STEP3>/<区名>/mosaic/mosaic_info.json         网格/参与景信息（可缺）
 光谱库（USGS splib07a ASCII 版）：
     <LIB_ROOT>/ChapterM_Minerals/*.txt
@@ -49,9 +58,9 @@ ZY1E AHSI 步骤4：Al-OH 蚀变组合提取（USGS splib07a 光谱库 + SAM / S
     preview_quality.png           质检图（真彩色/分类/深度/吸收位置/置信度/面积）
 
 _library/（全流程共用，只需建一次）
-    ahsi_library.npy              [N, 152] 传感器匹配后的库光谱（float32）
+    ahsi_library.npy              [N, 142] 传感器匹配后的库光谱（float32）
     ahsi_library_meta.csv         端元清单（矿物类 / 样本 / 光谱仪 / 源文件）
-    ahsi_band_spec.csv            152 波段：中心波长 / FWHM / 是否参与匹配 / 是否 Al-OH 窗口
+    ahsi_band_spec.csv            142 波段：中心波长 / FWHM / 是否参与匹配 / 是否 Al-OH 窗口
     library_overview.png          库光谱图（全谱 + 2.1~2.5 μm 放大）
 _catalog/
     step4_batch.log               批处理日志
@@ -60,7 +69,7 @@ _catalog/
 处理要点
 --------
 1. 光谱库→传感器重采样：对每个 AHSI 波段中心做高斯卷积（σ=FWHM/2.3548），
-   逐波段独立采样。**不能**把 152 个波长直接当单调网格做 np.interp：
+   逐波段独立采样。**不能**把 142 个波长直接当单调网格做 np.interp：
    本数据 VNIR 末波段 1.0402 μm ≥ SWIR 首波段 1.0056 μm，波长非单调；
    另有 1.34-1.44、1.78-1.96 μm 水汽带已被步骤1 剔除，波长序列存在缺口。
 2. 波长上限：库光谱只到 2.5 μm；本数据 2.35 μm 以后辐亮度只有 1~6 DN、
@@ -79,7 +88,7 @@ _catalog/
 5. MF/MTMF：背景均值/协方差从清晰像元抽稀采样估计（151×151），
    加小岭参数求伪逆；MTMF 不可行性用白化空间残差近似，
    只作为辅助判据/质检，不参与默认分类判决。
-6. 流式处理：按 BLOCK_ROWS 行分块读取（152 波段 × 块），逐块写出，
+6. 流式处理：按 BLOCK_ROWS 行分块读取（142 波段 × 块），逐块写出，
    避免整景 1.8 GB 立方体全读入内存。
 7. 稳健性：原子写出、跳过已完成、单区失败不影响整批、
    波段数/波长数/库波段一致性校验、缺库/缺响应文件明确报错。
@@ -118,9 +127,9 @@ import time
 import numpy as np
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  Windows / conda 的 GDAL DLL 引导                              ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# Windows / conda 的 GDAL DLL 引导
+# =================================================================
 # Python 3.8+ 的扩展模块不再用 PATH 查找依赖 DLL，需要显式
 # os.add_dll_directory。conda 环境的 gdal.dll 在 Library\bin；
 # 个别环境因 conda 事务中断，sqlite3.dll 只留在 pkgs 缓存里，
@@ -166,28 +175,39 @@ gdal.UseExceptions()
 gdal.PushErrorHandler("CPLQuietErrorHandler")
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  【配置区】按需修改                                            ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 配置区（按需修改）
+# =================================================================
 
-# ────────────【输入/输出】步骤3 成果目录、本步成果根目录 ────────────
+# 输入/输出：步骤3 成果目录、本步成果根目录
 IN_ROOT_STEP3 = r"E:\ZhouYang\test\ZY1E_output_step3"
 OUT_ROOT_STEP4 = r"E:\ZhouYang\test\ZY1E_output_step4"
 
-# ────────────【输入】USGS splib07a ASCII 光谱库目录 ────────────
+# 步骤3 直接产物（按研究区裁剪的逐景反射率）后缀；旧后缀自动兼容
+STEP3_CLIP_SUFFIXES = ("_cal_badband_ortho_atmcorr_clip.tif",
+                       "_ortho_atmcorr_clip.tif")
+# 波长来源：优先步骤1，其次步骤2（<场景名>/wavelengths_clean.npy）
+STEP1_ROOT = r"E:\ZhouYang\test\ZY1E_output_step1"
+STEP2_ROOT = r"E:\ZhouYang\test\ZY1E_output_step2"
+# 裁剪成果合并后的 VRT/掩膜缓存目录（位于本步输出根目录下）
+CACHE_DIR_NAME = "_cache"
+CACHE_VRT_NAME = "mosaic_reflectance.vrt"
+MASK_SAMPLE_BANDS = 12         # 生成掩膜时抽样检查的波段数
+
+# 输入：USGS splib07a ASCII 光谱库目录
 LIB_ROOT = r"E:\ZhouYang\test\ASCIIdata_splib07a"
 LIB_CHAPTER_DIR = "ChapterM_Minerals"
 
-# ────────────【输入】原始 tar 目录（用于读 AHSI 光谱响应 FWHM） ────────────
+# 输入：原始 tar 目录（用于读 AHSI 光谱响应 FWHM）
 TAR_DIR = r"E:\ZhouYang\test\ZY1E_data"
 RESPONSE_SUFFIXES = ("_VNIR_Spectralresponse.raw", "_SWIR_Spectralresponse.raw")
 
-# ────────────【参数】传感器响应（读不到 raw 时的回退值） ────────────
+# 参数：传感器响应（读不到 raw 时的回退值）
 VNIR_FWHM_NM_FALLBACK = 8.76
 SWIR_FWHM_NM_FALLBACK = 16.26
 VNIR_SWIR_SPLIT_UM = 1.05      # 回退时按该波长分 VNIR/SWIR
 
-# ────────────【参数】Al-OH 矿物清单（库记录首词必须精确等于英文名） ────────────
+# 参数：Al-OH 矿物清单（库记录首词必须精确等于英文名）
 # 值：(中文名, 绘图颜色)
 TARGET_MINERALS = [
     ("Kaolinite",       "高岭石",       "#5b7db1"),
@@ -206,7 +226,7 @@ MINERAL_EN = [item[0] for item in TARGET_MINERALS]
 MINERAL_CN = {item[0]: item[1] for item in TARGET_MINERALS}
 MINERAL_COLOR = {item[0]: item[2] for item in TARGET_MINERALS}
 
-# ────────────【参数】光谱库筛选 ────────────
+# 参数：光谱库筛选
 LIB_MAX_SAMPLES_PER_MINERAL = 6     # 每类最多保留几个端元（按光谱仪优先级/样本名排序）
 LIB_MIN_ENDMEMBERS = 3              # 建库后至少要有这么多端元，否则报错
 # 光谱仪优先顺序（数字越小越优先）：ASD 系列 2151 通道 → BECK 480 通道 → AVIRIS 224
@@ -228,14 +248,14 @@ LIB_WAVELENGTH_FILES = {
     "AVIRIS": "splib07a_Wavelengths_AVIRIS_1996_0.37-2.5_microns.txt",
 }
 
-# ────────────【参数】库→AHSI 重采样 ────────────
+# 参数：库→AHSI 重采样
 LIB_MAX_WAVELENGTH_UM = 2.50   # 库光谱波长上限；AHSI 末波段 2.5011 μm 不参与匹配
 # 参与匹配（SAM/SFF/MF 的背景统计与丰度）的波长上限：本数据 2.35 μm 以后
 # 辐亮度只有 1~6 DN、地表反射率大于表观 TOA 反射率（物理上不可能），
 # 属于噪声被 6S 强水汽吸收放大的伪值，故匹配一律只用 ≤2.30 μm 的波段。
 MATCH_MAX_WAVELENGTH_UM = 2.30
 
-# ────────────【参数】Al-OH 2.2 μm 吸收特征 ────────────
+# 参数：Al-OH 2.2 μm 吸收特征
 # 连续统锚点（左右肩）：2.08 / 2.30 μm；特征评价范围：2.12~2.28 μm。
 # 说明：本数据 2.35 μm 以后辐射/反射率快速趋近 0（长波 SWIR 信噪比很低），
 # 若把右肩放到 2.45 μm 会把连续统压到近零、吸收深度失真，故窗口收窄到 2.30。
@@ -243,7 +263,7 @@ ALOH_CONTINUUM_RANGE = (2.08, 2.30)
 ALOH_FEATURE_RANGE = (2.12, 2.28)
 MIN_ALOH_BANDS = 8             # 窗口内波段数下限，不足则报错
 
-# ────────────【参数】像元有效性 ────────────
+# 参数：像元有效性
 REFL_MIN = -0.05               # 反射率下限（允许轻微负值，大气校正残留）
 REFL_MAX = 1.20                # 反射率上限
 NODATA_THRESHOLD = -9000.0     # 小于该值视为 nodata（-9999）
@@ -255,25 +275,25 @@ NODATA_OUT = -9999.0
 MAX_BAND_MISSING_FRACTION = 0.02   # 清晰像元中缺测比例超过 2% 的波段不参与匹配
 MAX_MISSING_BANDS_MATCH = 2        # 单像元参与匹配的波段中允许缺测的个数（缺测按 0 填充）
 
-# ────────────【参数】分类阈值（先用默认值试点，按直方图/质检图再调） ────────────
+# 参数：分类阈值（先用默认值试点，按直方图/质检图再调）
 MIN_ALOH_DEPTH = 0.005         # 2.2 μm 吸收深度下限（连续统去除后）
 SAM_MAX_DEG = 10.0             # 连续统去除光谱角（CR-SAM）上限（度）
 SFF_MAX_RMS = 0.30             # SFF 连续统去除拟合残差上限（本数据噪声大，先放宽）
 CLASS_BY = "sam"               # 分类依据："sam"（默认）或 "sff"（按残差最小）
 
-# ────────────【参数】MF / MTMF（辅助产物，不参与默认分类判决） ────────────
+# 参数：MF / MTMF（辅助产物，不参与默认分类判决）
 ENABLE_MF = True
 BG_SAMPLE_PIXELS = 150000      # 背景统计抽样像元数
 BG_RIDGE = 1.0e-6              # 协方差求逆的岭参数（相对迹）
 
-# ────────────【参数】分块与压缩 ────────────
+# 参数：分块与压缩
 BLOCK_ROWS = 96
 GDAL_CACHE_MB = 1024
 GTIFF_OPTIONS = ["BIGTIFF=IF_SAFER"]
 GEOTIFF_COMPRESS = "DEFLATE"
 GEOTIFF_COMPRESS_LEVEL = 6
 
-# ────────────【参数】质检图 ────────────
+# 参数：质检图
 MAKE_QC = True
 QC_MAX_SIZE = 1500
 QC_DPI = 150
@@ -306,9 +326,9 @@ CLASS_NODATA = 255
 LOG_NAME = "zy1e.step4"
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  通用工具                                                     ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 通用工具
+# =================================================================
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(
@@ -389,9 +409,9 @@ def read_text_lines(path):
     return text.split("\n")
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  传感器波段规格（波长 + FWHM）                                  ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 传感器波段规格（波长 + FWHM）
+# =================================================================
 
 def load_sensor_fwhm(tar_dir, band_wavelengths, logger):
     """
@@ -456,9 +476,9 @@ def load_sensor_fwhm(tar_dir, band_wavelengths, logger):
     return fwhm_nm / 1000.0, source
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  光谱库：扫描 / 解析 / 传感器重采样                             ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 光谱库：扫描 / 解析 / 传感器重采样
+# =================================================================
 
 def parse_record_header(line):
     """解析 splib07a 记录头，返回 (样本名, 光谱仪, 类型) 或 None。"""
@@ -796,19 +816,159 @@ def make_library_overview(out_dir, band_wl, library, meta_rows, logger):
     logger.info("库光谱图: %s", path)
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  区域处理                                                     ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 区域处理
+# =================================================================
+
+def _clip_suffix(filename):
+    for suffix in STEP3_CLIP_SUFFIXES:
+        if filename.endswith(suffix):
+            return suffix
+    return None
+
+
+def area_clip_files(in_root, area):
+    """列出 <in_root>/<area>/ 下的逐景裁剪反射率（按文件名排序）。"""
+    area_dir = os.path.join(in_root, area)
+    if not os.path.isdir(area_dir):
+        return []
+    return [os.path.join(area_dir, name) for name in sorted(os.listdir(area_dir))
+            if _clip_suffix(name) and os.path.isfile(os.path.join(area_dir, name))]
+
+
+def _scene_wavelengths_path(scene):
+    for root in (STEP1_ROOT, STEP2_ROOT):
+        path = os.path.join(root, scene, "wavelengths_clean.npy")
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def load_area_wavelengths(clips, band_count=None):
+    """由裁剪文件名反推场景名，读取步骤1/2 的 wavelengths_clean.npy。"""
+    for path in clips:
+        name = os.path.basename(path)
+        suffix = _clip_suffix(name)
+        scene = name[:-len(suffix)] if suffix else os.path.splitext(name)[0]
+        wl_path = _scene_wavelengths_path(scene)
+        if wl_path is None:
+            continue
+        wavelengths = np.load(wl_path).astype(np.float64)
+        if wavelengths.ndim != 1:
+            raise ValueError("波长文件不是 1 维: %s" % wl_path)
+        if band_count is not None and wavelengths.size != band_count:
+            raise ValueError("裁剪影像波段数 %d != 波长数 %d（%s）",
+                             band_count, wavelengths.size, wl_path)
+        return wavelengths, scene
+    raise FileNotFoundError(
+        "未找到裁剪场景对应的 wavelengths_clean.npy（查过步骤1/2 目录）")
+
+
+def build_area_vrt(clips, vrt_path):
+    """用逐景裁剪成果构建虚拟镶嵌（不落地大栅格）。"""
+    tmp_path = vrt_path + ".tmp.vrt"
+    options = gdal.BuildVRTOptions(resolution="highest", VRTNodata=NODATA_OUT)
+    vrt = gdal.BuildVRT(tmp_path, clips, options=options)
+    if vrt is None:
+        raise RuntimeError("构建 VRT 失败: %s" % vrt_path)
+    vrt.FlushCache()
+    vrt = None
+    os.replace(tmp_path, vrt_path)
+
+
+def build_area_mask(vrt_path, mask_path, logger):
+    """按抽样波段的有效值与反射率范围生成 0/1 掩膜（1=清晰像元）。"""
+    ds = gdal.Open(vrt_path)
+    if ds is None:
+        raise RuntimeError("无法打开镶嵌: %s" % vrt_path)
+    width, height, nbands = ds.RasterXSize, ds.RasterYSize, ds.RasterCount
+    count = min(MASK_SAMPLE_BANDS, nbands)
+    sample = np.unique(np.linspace(0, nbands - 1, count).astype(int))
+    tmp_path = mask_path + ".tmp.tif"
+    driver = gdal.GetDriverByName("GTiff")
+    out = driver.Create(tmp_path, width, height, 1, gdal.GDT_Byte,
+                        options=["TILED=YES", "COMPRESS=DEFLATE", "ZLEVEL=6"])
+    if out is None:
+        raise RuntimeError("无法创建掩膜: %s" % mask_path)
+    out.SetGeoTransform(ds.GetGeoTransform())
+    out.SetProjection(ds.GetProjection())
+    band = out.GetRasterBand(1)
+    band.SetNoDataValue(0)
+    clear_total = 0
+    for y in range(0, height, BLOCK_ROWS):
+        rows = min(BLOCK_ROWS, height - y)
+        valid = np.ones((rows, width), bool)
+        low = np.full((rows, width), np.inf)
+        high = np.full((rows, width), -np.inf)
+        for index in sample:
+            array = ds.GetRasterBand(int(index) + 1).ReadAsArray(0, y, width, rows)
+            array = np.asarray(array, np.float64)
+            ok = _valid_pixels(array)
+            valid &= ok
+            low = np.where(ok, np.minimum(low, array), low)
+            high = np.where(ok, np.maximum(high, array), high)
+        valid &= (low > REFL_MIN) & (high < REFL_MAX)
+        mask = valid.astype(np.uint8)
+        band.WriteArray(mask, 0, y)
+        clear_total += int(mask.sum())
+    out.FlushCache()
+    out = None
+    ds = None
+    os.replace(tmp_path, mask_path)
+    logger.info("生成掩膜: %s（清晰像元 %.1f%%）",
+                mask_path, 100.0 * clear_total / max(1, width * height))
+
+
+def resolve_area_inputs(in_root, area, cache_root, overwrite, logger, build=True):
+    """解析区域输入：优先 mosaic 三件套，否则由步骤3 裁剪成果构建 VRT + 掩膜。"""
+    mosaic_dir = os.path.join(in_root, area, "mosaic")
+    mosaic_tif = os.path.join(mosaic_dir, IN_MOSAIC_NAME)
+    mosaic_mask = os.path.join(mosaic_dir, IN_MASK_NAME)
+    mosaic_wl = os.path.join(mosaic_dir, IN_WAVELENGTHS_NAME)
+    if (os.path.isfile(mosaic_tif) and os.path.isfile(mosaic_mask)
+            and os.path.isfile(mosaic_wl)):
+        return {"refl_path": mosaic_tif, "mask_path": mosaic_mask,
+                "wavelengths": np.load(mosaic_wl).astype(np.float64),
+                "source": "mosaic", "scenes": []}
+
+    clips = area_clip_files(in_root, area)
+    if not clips:
+        raise FileNotFoundError(
+            "区域 %s 下既没有 mosaic/ 三件套，也没有步骤3 裁剪成果" % area)
+    probe = gdal.Open(clips[0])
+    if probe is None:
+        raise RuntimeError("无法打开裁剪成果: %s" % clips[0])
+    band_count = probe.RasterCount
+    probe = None
+    wavelengths, _ = load_area_wavelengths(clips, band_count)
+
+    cache_dir = os.path.join(cache_root, CACHE_DIR_NAME, area)
+    vrt_path = os.path.join(cache_dir, CACHE_VRT_NAME)
+    mask_path = os.path.join(cache_dir, IN_MASK_NAME)
+    if not build:
+        return {"refl_path": vrt_path, "mask_path": mask_path,
+                "wavelengths": wavelengths, "source": "clip", "scenes": clips}
+
+    os.makedirs(cache_dir, exist_ok=True)
+    if overwrite or not os.path.isfile(vrt_path):
+        build_area_vrt(clips, vrt_path)
+        logger.info("[%s] 合并 %d 景裁剪成果 -> %s", area, len(clips), vrt_path)
+    if overwrite or not os.path.isfile(mask_path):
+        build_area_mask(vrt_path, mask_path, logger)
+    return {"refl_path": vrt_path, "mask_path": mask_path,
+            "wavelengths": wavelengths, "source": "clip", "scenes": clips}
+
 
 def discover_areas(in_root, patterns=None):
     areas = []
     if not os.path.isdir(in_root):
         raise NotADirectoryError("步骤3 成果目录不存在: %s" % in_root)
     for name in sorted(os.listdir(in_root)):
-        mosaic_dir = os.path.join(in_root, name, "mosaic")
-        if not os.path.isdir(mosaic_dir):
+        if not os.path.isdir(os.path.join(in_root, name)):
             continue
-        if not os.path.isfile(os.path.join(mosaic_dir, IN_MOSAIC_NAME)):
+        has_mosaic = os.path.isfile(
+            os.path.join(in_root, name, "mosaic", IN_MOSAIC_NAME))
+        if not has_mosaic and not area_clip_files(in_root, name):
             continue
         if patterns and not any(fnmatch.fnmatch(name, pattern) for pattern in patterns):
             continue
@@ -941,12 +1101,11 @@ def _create_gtiff(tmp_path, width, height, nbands, dtype, geo, projection,
     return dataset
 
 
-def process_area(area_name, src_dir, out_root, library, response_source, args, logger):
+def process_area(area_name, inputs, out_root, library, response_source, args, logger):
     started = time.time()
-    mosaic_dir = os.path.join(src_dir, area_name, "mosaic")
-    in_tif = os.path.join(mosaic_dir, IN_MOSAIC_NAME)
-    in_mask = os.path.join(mosaic_dir, IN_MASK_NAME)
-    in_wl = os.path.join(mosaic_dir, IN_WAVELENGTHS_NAME)
+    in_tif = inputs["refl_path"]
+    in_mask = inputs["mask_path"]
+    wavelengths = inputs["wavelengths"]
     out_dir = os.path.join(out_root, area_name)
 
     final_class = os.path.join(out_dir, OUT_CLASS_NAME)
@@ -957,11 +1116,8 @@ def process_area(area_name, src_dir, out_root, library, response_source, args, l
                 "elapsed": 0.0, "classes": None,
                 "valid_pixels": 0, "classified_pixels": 0}
 
-    if not os.path.isfile(in_wl):
-        raise FileNotFoundError("缺少波长文件: %s" % in_wl)
-    wavelengths = np.load(in_wl).astype(np.float64)
     if wavelengths.ndim != 1:
-        raise ValueError("波长文件不是 1 维: %s" % in_wl)
+        raise ValueError("波长数组不是 1 维: %s" % in_tif)
 
     ds = gdal.Open(in_tif)
     if ds is None:
@@ -1564,9 +1720,9 @@ def make_area_qc(out_dir, area_name, mosaic_path, wavelengths, rows, logger):
     logger.info("[%s] 质检图: %s", area_name, path)
 
 
-# ╔══════════════════════════════════════════════════════════════╗
-# ║  主流程                                                       ║
-# ╚══════════════════════════════════════════════════════════════╝
+# =================================================================
+# 主流程
+# =================================================================
 
 def write_areas_summary(path, results):
     fields = ["area", "status", "valid_pixels", "classified_pixels",
@@ -1628,13 +1784,18 @@ def main(argv=None):
     if args.limit > 0:
         areas = areas[:args.limit]
     if not areas:
-        logger.error("在 %s 下未找到可处理的区域（需要 <区名>/mosaic/%s）",
+        logger.error("在 %s 下未找到可处理的区域（需要 <区名>/mosaic/%s 或 <区名>/*_clip.tif）",
                      args.in_root, IN_MOSAIC_NAME)
         return 2
     logger.info("待处理区域: %d (%s)", len(areas), ", ".join(areas))
 
-    first_mosaic = os.path.join(args.in_root, areas[0], "mosaic")
-    wavelengths = np.load(os.path.join(first_mosaic, IN_WAVELENGTHS_NAME)).astype(np.float64)
+    try:
+        first_inputs = resolve_area_inputs(args.in_root, areas[0], out_root,
+                                           False, logger, build=False)
+    except Exception as exc:
+        logger.error("解析区域输入失败: %s", exc)
+        return 2
+    wavelengths = first_inputs["wavelengths"]
     band_fwhm, response_source = load_sensor_fwhm(TAR_DIR, wavelengths, logger)
 
     if args.dry_run:
@@ -1645,7 +1806,17 @@ def main(argv=None):
                     "已存在，将复用" if os.path.isfile(os.path.join(library_dir, "ahsi_library.npy"))
                     else "尚未构建，正式运行时构建")
         for name in areas:
-            logger.info("  %-10s <- %s", name, os.path.join(args.in_root, name, "mosaic"))
+            try:
+                inputs = resolve_area_inputs(args.in_root, name, out_root,
+                                             False, logger, build=False)
+            except Exception as exc:
+                logger.error("  %-10s 输入不可用: %s", name, exc)
+                continue
+            if inputs["source"] == "mosaic":
+                logger.info("  %-10s <- %s", name, inputs["refl_path"])
+            else:
+                logger.info("  %-10s <- %d 景裁剪成果（将合并为 %s）",
+                            name, len(inputs["scenes"]), inputs["refl_path"])
         logger.info("阈值: min_depth=%.3f, max_angle=%.1f°, max_rms=%.3f, class_by=%s",
                     args.min_depth, args.max_angle, args.max_rms, args.class_by)
         return 0
@@ -1670,7 +1841,9 @@ def main(argv=None):
         logger.info("-" * 72)
         logger.info("(%d/%d) %s", index, len(areas), area)
         try:
-            results.append(process_area(area, os.path.abspath(args.in_root), out_root,
+            inputs = resolve_area_inputs(args.in_root, area, out_root,
+                                         args.overwrite, logger)
+            results.append(process_area(area, inputs, out_root,
                                         library, response_source, args, logger))
         except Exception as exc:
             logger.exception("[%s] 处理失败", area)

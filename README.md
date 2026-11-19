@@ -83,11 +83,16 @@ testcode/
 | 01 | L1A `.tar` | `*_cal_badband_ortho.tif`（142 波段辐亮度，EPSG:32650 / 30 m）、`wavelengths_clean.npy`、`georef.json` |
 | 02 | 步骤 1 输出 + MODIS AOD + DEM | `*_cal_badband_ortho_atmcorr.tif`（地表反射率，与步骤 1 同网格） |
 | 03 | 步骤 2 输出 + 研究区 `.shp` | `<区名>/<景名>_cal_badband_ortho_atmcorr_clip.tif` |
-| 04 | 步骤 3 区域镶嵌 + USGS splib07a 光谱库 | Al-OH 分类、置信度、吸收深度/位置/宽度、SAM/SFF/MF 成果 |
-| 05 | 步骤 3 区域镶嵌 + 步骤 4 光谱库 | MNF 分量、PPI 端元、MTMF 丰度/不可行性/分类、与 SAM 对比 |
+| 04 | 步骤 3 裁剪成果（或区域镶嵌）+ USGS splib07a 光谱库 | Al-OH 分类、置信度、吸收深度/位置/宽度、SAM/SFF/MF 成果 |
+| 05 | 步骤 3 裁剪成果（或区域镶嵌）+ 步骤 4 光谱库 | MNF 分量、PPI 端元、MTMF 丰度/不可行性/分类、与 SAM 对比 |
 
 运行顺序固定为 00 → 01 → 02 → 03，再执行 04 / 05。每步都支持 `--dry-run` 和
 `--in` / `--out` 覆盖默认目录。
+
+04 / 05 的输入适配：若 `<区名>/mosaic/` 三件套存在则直接使用；否则自动扫描
+`<区名>/*_clip.tif`（含旧后缀 `_ortho_atmcorr_clip.tif`），用 `gdal.BuildVRT`
+合并成虚拟镶嵌并按有效值生成掩膜，缓存到 `<步骤4输出>/_cache/<区名>/`，
+波长取自步骤 1/2 同景目录的 `wavelengths_clean.npy`。加 `--overwrite` 可重建缓存。
 
 ```bash
 conda activate hsi
@@ -112,7 +117,7 @@ python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf.py
 | `ZY1E_output_step1/` | 步骤 1 成果 |
 | `ZY1E_output_step2/` | 步骤 2 成果 |
 | `ZY1E_output_step3/` | 步骤 3 裁剪成果 |
-| `ZY1E_output_step4/` | 步骤 4 成果（含 `_library/`） |
+| `ZY1E_output_step4/` | 步骤 4 成果（含 `_library/`、`_cache/`） |
 | `ZY1E_output_step4_mnf/` | 步骤 5 成果 |
 | `ZY1E_Georef_JPG/` | 步骤 0 成果 |
 | `Hyperarea2/` | 研究区矢量（按区子目录存放 `.shp`） |
@@ -129,8 +134,6 @@ python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf.py
 
 ## 已知限制
 
-- **步骤 3 / 4 / 5 的衔接**：主链的 `03_clip_by_area` 只做逐景裁剪，输出
-  `<区名>/<景名>_..._clip.tif`；而 04 / 05 读取的是 `<区名>/mosaic/mosaic_reflectance.tif`
-  （区域镶嵌）。若坚持"不拼接"的裁剪路线，需要调整 04 / 05 的输入读取逻辑。
-  区域镶嵌实现见 `03_clip_by_area/03_orthorectify_clip_mosaic_v1.0.py`。
+- 步骤 4 / 5 已内置输入适配，可直接消费步骤 3 的逐景裁剪成果（首次运行会建立
+  `_cache/<区名>/` 下的 VRT 与掩膜，不落地大栅格），无需先做区域镶嵌。
 - 步骤 2 的 NASA LAADS 令牌请通过环境变量 `LAADS_TOKEN` 提供，不要写入源码。

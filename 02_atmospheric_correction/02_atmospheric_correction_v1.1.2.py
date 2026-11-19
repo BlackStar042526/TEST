@@ -25,7 +25,7 @@ except ImportError as exc:
     raise SystemExit(
         "当前 Python 解释器缺少 numpy：%s\n"
         "请用装好 GDAL + Py6S 的解释器运行本脚本，例如：\n"
-        "    C:\\ProgramData\\anaconda3\\python.exe 02_atmospheric_correction_batch.py"
+        "    E:\\ProgramData\\anaconda3\\envs\\hsi\\python.exe 02_atmospheric_correction_v1.1.2.py"
         % exc)
 
 try:
@@ -34,7 +34,7 @@ except ImportError as exc:
     raise SystemExit(
         "当前 Python 解释器缺少 GDAL（osgeo）：%s\n"
         "请用装好 GDAL + Py6S 的解释器运行本脚本，例如：\n"
-        "    C:\\ProgramData\\anaconda3\\python.exe 02_atmospheric_correction_batch.py"
+        "    E:\\ProgramData\\anaconda3\\envs\\hsi\\python.exe 02_atmospheric_correction_v1.1.2.py"
         % exc)
 
 gdal.UseExceptions()
@@ -1142,7 +1142,7 @@ def build_sixs(sixs_exe, meta, atmos_name, aero_name, aot550,
     except ImportError as exc:
         raise ImportError(
             "未安装 Py6S，请用装有 GDAL+Py6S 的 Python 运行本脚本"
-            "（例如 C:\\ProgramData\\anaconda3\\python.exe）: %s" % exc)
+            "（例如 E:\\ProgramData\\anaconda3\\envs\\hsi\\python.exe）: %s" % exc)
 
     atmos_map = {
         "Tropical": AtmosProfile.Tropical,

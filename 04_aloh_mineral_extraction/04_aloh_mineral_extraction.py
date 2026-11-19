@@ -95,7 +95,7 @@ _catalog/
 
 依赖：GDAL >= 3.0、numpy；matplotlib 可选（质检图）。
       建议用装好 GDAL 的 Anaconda 解释器，例如
-      C:\\ProgramData\\anaconda3\\python.exe
+      E:\\ProgramData\\anaconda3\\envs\\hsi\\python.exe
 
 后续约定：步骤5 读取本步 aloh_class.tif / sam_angle_deg.tif / sff_abundance.tif /
 aloh_depth.tif + 步骤3 mosaic 与 source_scene 索引，做机器学习分类与精度评价；
@@ -159,7 +159,7 @@ except ImportError as exc:
     raise SystemExit(
         "当前 Python 解释器缺少 GDAL（osgeo）：%s\n"
         "请用装好 GDAL 的 Anaconda 解释器运行本脚本，例如：\n"
-        "    C:\\ProgramData\\anaconda3\\python.exe 04_aloh_mineral_extraction.py"
+        "    E:\\ProgramData\\anaconda3\\envs\\hsi\\python.exe 04_aloh_mineral_extraction.py"
         % exc)
 
 gdal.UseExceptions()

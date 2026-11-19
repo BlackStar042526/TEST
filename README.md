@@ -6,18 +6,31 @@ MNF/PPI/MTMF 填图。
 
 ## 环境
 
-- Python 3.9（conda 环境）
-- GDAL（`osgeo`）、numpy、scipy、matplotlib、Pillow
-- Py6S + 6S 可执行程序（仅步骤 2 需要）
+本项目统一使用 conda 环境 `hsi`：
 
-建议用 conda 安装 GDAL，而非 pip：
+| 项 | 值 |
+|---|---|
+| 解释器 | `E:\ProgramData\anaconda3\envs\hsi\python.exe` |
+| Python | 3.9.25 |
+| GDAL | 3.10.3 |
+| numpy | 2.0.2 |
+| scipy | 1.13.1 |
+| matplotlib | 3.9.2 |
+| Pillow | 11.3.0 |
+| Py6S | 已安装（步骤 2 还需要 6S 可执行程序） |
 
-```bash
-conda create -n zy1e python=3.9
-conda activate zy1e
-conda install -c conda-forge gdal numpy scipy matplotlib pillow
-pip install Py6S
+运行前激活环境：
+
+```powershell
+conda activate hsi
 ```
+
+或在脚本里直接用解释器全路径：
+
+```powershell
+& E:\ProgramData\anaconda3\envs\hsi\python.exe .\01_calibration_badbands\01_calibration_badbands_v1.0.3.py
+```
+
 
 ## 目录结构
 
@@ -77,6 +90,7 @@ testcode/
 `--in` / `--out` 覆盖默认目录。
 
 ```bash
+conda activate hsi
 cd E:\ZhouYang\test\code\testcode
 
 python 00_preview_jpg/00_extract_georeferenced_jpg_v1.0.0.py

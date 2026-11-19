@@ -575,11 +575,6 @@ def process_area(area, inputs, out_root, args, logger):
         logger.info("[%s] 跳过（成果已存在）", area)
         return {"area": area, "status": "跳过", "message": "成果已存在"}
 
-    source_note = ("mosaic" if inputs["source"] == "mosaic"
-                   else "裁剪成果合并 %d 景" % len(inputs["scenes"]))
-    logger.info("[%s] 开始处理：%s（%s）", area, refl_path, source_note)
-    logger.info("[%s] 掩膜: %s；波段数 %d", area, mask_path, wl.size)
-
     ds = gdal.Open(refl_path)
     mask_ds = gdal.Open(mask_path)
     if ds is None or mask_ds is None:
@@ -595,25 +590,20 @@ def process_area(area, inputs, out_root, args, logger):
                 band_idx.size, MNF_BAND_MIN_UM, MNF_BAND_MAX_UM)
 
     # ── 采样 + MNF ──
-    t_stage = time.time()
     samples, noise_diffs = sample_stats(ds, mask_ds, band_idx)
-    logger.info("[%s] 采样 %d 像元, 噪声差样本 %d（用时 %.1f s）", area,
-                samples.shape[0], noise_diffs.shape[0], time.time() - t_stage)
-    t_stage = time.time()
+    logger.info("[%s] 采样 %d 像元, 噪声差样本 %d", area, samples.shape[0],
+                noise_diffs.shape[0])
     mu, matrix, eigvals, k, var_ratio = mnf_transform(samples, noise_diffs)
-    logger.info("[%s] MNF 保留 %d 分量, 累计方差 %.4f（用时 %.1f s）",
-                area, k, var_ratio, time.time() - t_stage)
+    logger.info("[%s] MNF 保留 %d 分量, 累计方差 %.4f", area, k, var_ratio)
     scores_sample = (samples - mu) @ matrix
 
     # ── PPI + 端元 ──
-    t_stage = time.time()
     counts = ppi_extract(scores_sample)
     endmember_idx = select_endmembers(scores_sample, counts)
     endmember_scores = scores_sample[endmember_idx]
     endmember_spectra = samples[endmember_idx]          # 影像端元（match bands）
-    logger.info("[%s] PPI 端元 %d 个（PPI 计数 %s，用时 %.1f s）", area,
-                endmember_idx.size, counts[endmember_idx].tolist(),
-                time.time() - t_stage)
+    logger.info("[%s] PPI 端元 %d 个（PPI 计数 %s）", area, endmember_idx.size,
+                counts[endmember_idx].tolist())
     for idx in endmember_idx:
         depth, pos = continuum_depth(wl[band_idx], samples[idx])
         logger.info("    端元 PPI=%4d  λc=%.3f μm  depth=%.3f", counts[idx], pos, depth)
@@ -625,9 +615,6 @@ def process_area(area, inputs, out_root, args, logger):
         lib_match = library[:, band_idx]
         lib_scores = (lib_match - mu) @ matrix
         logger.info("[%s] 库端元 %d 个投影到 MNF", area, lib_scores.shape[0])
-    else:
-        logger.warning("[%s] 未找到步骤4 光谱库（%s），跳过库端元 MTMF",
-                       area, LIB_NPY)
 
     # ── 输出准备 ──
     os.makedirs(out_dir, exist_ok=True)
@@ -678,9 +665,7 @@ def process_area(area, inputs, out_root, args, logger):
     valid_total = 0
     classified_total = 0
 
-    logger.info("[%s] 开始分块处理：%d×%d，块高 %d 行", area, width, height, BLOCK_ROWS)
-    total_blocks = (height + BLOCK_ROWS - 1) // BLOCK_ROWS
-    for block_index, y0 in enumerate(range(0, height, BLOCK_ROWS), start=1):
+    for y0 in range(0, height, BLOCK_ROWS):
         rows = min(BLOCK_ROWS, height - y0)
         npix = width * rows
         block = read_bands(ds, band_idx, y0, rows)
@@ -743,9 +728,6 @@ def process_area(area, inputs, out_root, args, logger):
             buf = np.full(npix, NODATA_OUT, np.float32)
             buf[idx] = np.clip(mf_ppi[:, ei], 0.0, 1.0)
             out_ppi_abund.GetRasterBand(ei + 1).WriteArray(buf.reshape(rows, width), 0, y0)
-        if block_index % 20 == 0 or block_index == total_blocks:
-            logger.info("[%s] 进度 %d/%d 块（%.0f%%）", area, block_index,
-                        total_blocks, 100.0 * block_index / total_blocks)
 
     # 关闭写盘（清掉局部引用，Windows 下句柄才能释放）
     n_written = len(created)
@@ -808,11 +790,7 @@ def process_area(area, inputs, out_root, args, logger):
         json.dump(info, handle, ensure_ascii=False, indent=2)
 
     # 与 SAM 分类对比
-    try:
-        compare_sam(out_dir, area, logger)
-    except Exception as exc:
-        logger.warning("[%s] SAM 对比失败（不影响 MTMF 成果）: %s", area, exc,
-                       exc_info=True)
+    compare_sam(out_dir, area, logger)
 
     if MAKE_QC:
         try:
@@ -1012,35 +990,17 @@ def main(argv=None):
         logger.info("dry-run 结束")
         return 0
 
-    results = []
-    batch_started = time.time()
-    for index, area in enumerate(areas, start=1):
+    for area in areas:
         logger.info("-" * 72)
-        logger.info("(%d/%d) 处理: %s", index, len(areas), area)
+        logger.info("处理: %s", area)
         try:
             inputs = resolve_area_inputs(os.path.abspath(args.in_root), area,
                                          out_root, args.overwrite, logger)
-            results.append(process_area(area, inputs, out_root, args, logger))
+            process_area(area, inputs, out_root, args, logger)
         except Exception as exc:
-            logger.exception("[%s] 处理失败", area)
-            results.append({"area": area, "status": "失败", "message": str(exc),
-                            "elapsed": 0.0})
-
-    logger.info("=" * 72)
-    success = [r for r in results if r.get("status") == "成功"]
-    skipped = [r for r in results if r.get("status") == "跳过"]
-    failed = [r for r in results if r.get("status") == "失败"]
-    logger.info("批处理结束: 成功 %d，跳过 %d，失败 %d，总用时 %.1f s",
-                len(success), len(skipped), len(failed), time.time() - batch_started)
-    for result in results:
-        logger.info("  [%s] %s - %s", result.get("status"), result["area"],
-                    result.get("message", ""))
-    if failed:
-        logger.error("失败区域: %s", ", ".join(r["area"] for r in failed))
-        logger.error("排查请查看日志: %s", log_path)
-        return 1
+            logger.exception("[%s] 失败", area)
+            return 1
     logger.info("完成，成果: %s", out_root)
-    logger.info("日志文件: %s", log_path)
     return 0
 
 

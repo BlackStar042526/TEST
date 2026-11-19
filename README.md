@@ -68,7 +68,8 @@ testcode/
 │   ├── 04_aloh_mineral_extraction_v1.1.1.py                         增强运行日志
 │   ├── 04_aloh_mineral_extraction_v1.1.2.py                         代码标注
 │   ├── 04_aloh_mineral_extraction_v1.1.3.py                         精简开头注释 + 阶段耗时
-│   └── 04_aloh_mineral_extraction_v1.1.4.py                         ← 当前版本（逐行行尾备注）
+│   ├── 04_aloh_mineral_extraction_v1.1.4.py                         逐行行尾备注
+│   └── 04_aloh_mineral_extraction_v1.1.5.py                         ← 当前版本（精简矿物清单：云母族+绿泥石族+蒙脱石）
 ├── 05_mnf_ppi_mtmf/
 │   ├── 05_mnf_ppi_mtmf_v1.0.0.py                                    原始版（仅支持 mosaic 输入）
 │   ├── 05_mnf_ppi_mtmf_v1.1.0.py                                    支持裁剪成果输入
@@ -93,10 +94,12 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 保留在配置区分节注释与函数说明中），并在 04 的区域处理流程中补上各阶段耗时
 日志；算法与输出未变。
 
-当前 6 个脚本（00 v1.0.2、01 v1.0.5、02 v1.1.4、03 v2.2、04 v1.1.4、
+当前 6 个脚本（00 v1.0.2、01 v1.0.5、02 v1.1.4、03 v2.2、04 v1.1.5、
 05 v1.1.4）统一补充了**逐行行尾中文备注**：在赋值、判断、循环、GDAL/NumPy
 调用、写盘、异常分支等实质代码行末标注用途，便于逐行阅读；原有的分节注释、
-①…⑦ 步骤标记与函数说明全部保留，算法、输出文件名与格式与上一版完全一致。
+①…⑦ 步骤标记与函数说明全部保留。其中 **04 v1.1.5 进一步将目标矿物由 11 种
+Al-OH 精简为 6 种（云母族 + 绿泥石族 + 蒙脱石）**，剔除黄玉等非目标矿物，消除
+黄玉大面积误匹配；其余算法与输出文件名不变。
 
 ## 版本一览
 
@@ -106,7 +109,7 @@ v1.1.0 增加输入适配并统一代码风格；v1.1.1 增强运行日志（阶
 | 01 | `01_calibration_badbands_v1.0.5.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 / v1.0.4 | v1.0.5 逐行行尾备注 |
 | 02 | `02_atmospheric_correction_v1.1.4.py` | v1.1.3、v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | v1.1.4 逐行行尾备注 |
 | 03 | `03_clip_by_area_v2.2.py` | v2.1、v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | v2.2 逐行行尾备注；镶嵌版未参与主链 |
-| 04 | `04_aloh_mineral_extraction_v1.1.4.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 | v1.1.4 逐行行尾备注 |
+| 04 | `04_aloh_mineral_extraction_v1.1.5.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 / v1.1.4 | v1.1.5 精简矿物清单（云母族+绿泥石族+蒙脱石） |
 | 05 | `05_mnf_ppi_mtmf_v1.1.4.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 | v1.1.4 逐行行尾备注 |
 
 ## 处理流程
@@ -137,7 +140,7 @@ python 01_calibration_badbands/01_calibration_badbands_v1.0.5.py --dry-run
 python 01_calibration_badbands/01_calibration_badbands_v1.0.5.py
 python 02_atmospheric_correction/02_atmospheric_correction_v1.1.4.py
 python 03_clip_by_area/03_clip_by_area_v2.2.py --area JLHK
-python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.4.py
+python 04_aloh_mineral_extraction/04_aloh_mineral_extraction_v1.1.5.py
 python 05_mnf_ppi_mtmf/05_mnf_ppi_mtmf_v1.1.4.py
 ```
 

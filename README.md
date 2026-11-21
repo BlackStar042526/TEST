@@ -32,7 +32,39 @@ conda activate hsi
 ```
 
 
-## 目录结构
+## 主流水线（pipeline_v2.2.0，推荐）
+
+`pipeline_v2.2.0/` 是当前主用的 3 步流水线，用集中配置文件 `pipeline_config.py`
+统一管理路径、环境与常量，前一步产物直接传给下一步：
+
+| 步骤 | 脚本 | 作用 | 输出 |
+|---|---|---|---|
+| 1 | `01_calibration_v2.2.0.py` | L1A 解包 → 辐射定标（`L=Gain·DN+Bias`）→ DN=0 掩膜 → **RPC 足迹角点反算网格修正**（修正 v2.0 仿射往返恒等造成的约 2.4% 网格偏差） | `ZY1E_output_step1_v21/<景>/radiance_native.tif`（166 波段，原生网格 + RPC） |
+| 2 | `02_atmospheric_correction_v2.2.0.py` | **6S/Py6S 大气校正**：K-T 暗像元 AOT（Visual 兜底）→ **高程分块 6S**（按 DEM 逐像元海拔分 3 档分别算系数）→ 反射率反演 → 水汽带剔除 | `ZY1E_output_step2_v21/<景>/…_atmcorr.tif`（147 波段） |
+| 3 | `03_ortho_clip_mosaic_v2.2.0.py` | RPC 正射 + 研究区裁剪 + 云感知镶嵌：**主景优先 + 逐波段兜底**、剔除 6 个无用水汽带（147→**141**）、残留 NoData **光谱补值**（缺口 ≤3 线性插值、>3 拷贝兜底）、**S-G 3 点平滑 + 诊断峰核验** | `ZY1E_output_step3_v21/<区>/mosaic/mosaic_reflectance.tif`（141 波段） |
+
+v2.2.0 关键精度改进：
+
+- **几何**：RPC 网格修正改为用足迹 4 角点反算 SAMP/LINE 的 scale+offset，消除 v2.0 仿射往返导致的约 2.4% 网格偏差（残差 ≈0.001 像元）。
+- **大气**：高程分块 6S——山区像元用对应海拔的 6S 系数，而不是整景一个平均海拔。
+- **光谱连贯**：镶嵌时每个像元优先使用同一"主景"，仅缺失波段才逐波段补，减少跨景拼接台阶。
+- **光谱保真**：只剔除 6 个无信息水汽带（1.4253/1.4422/1.4590/1.4759/1.7954/1.8120 μm），2.0–2.5 μm 等有用波段保留并补值；S-G 平滑后 2200/2340/1100 nm 诊断吸收峰深度变化 0.0%。
+
+运行（先在 `pipeline_config.py` 把 `ROOT` 改成本机数据目录）：
+
+```powershell
+& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\01_calibration_v2.2.0.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\02_atmospheric_correction_v2.2.0.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\03_ortho_clip_mosaic_v2.2.0.py
+```
+
+> `pipeline/`（v2.0.0）与 `pipeline_v2.1.0/` 为历史版本，保留用于对照。
+
+---
+
+## 早期版本（00~05，单步脚本）
+
+### 目录结构
 
 每个处理步骤一个文件夹，文件夹内并列保存该步骤的全部版本，文件名带版本号，
 因此可以同屏对比、按版本回退。

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 01_calibration.py
-ZY1E AHSI Step 1：辐射定标 + DN=0 掩膜 + RPC 校正 + 质检（v2.1.0）
+ZY1E AHSI Step 1：辐射定标 + DN=0 掩膜 + RPC 校正 + 质检（v2.2.0）
 
 v2.1.0 变更（用户 2026-11-20 决策）：
   ✅ 波段剔除后移 —— Step 1 不再物理剔除任何波段，输出全部 166 波段；
@@ -44,9 +44,13 @@ gdal.UseExceptions()                           # 出错即抛异常，不再静�
 gdal.PushErrorHandler("CPLQuietErrorHandler")  # 屏蔽 GDAL 非致命错误输出
 
 # =================================================================
-# 配置区（按需修改；v2.2.0 路径统一收口到 pipeline_config.py）
+# 配置区（按需修改；v2.2.0 路径统一收口到仓库根 config.py）
 # =================================================================
-import pipeline_config as _C
+import os as _os, sys as _sys                    # 用于定位仓库根目录下的 config.py
+_REPO_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+import config as _C
 SRC_DIR = _C.SRC_DIR                                  # 默认源目录：压缩包所在
 OUT_ROOT = _C.OUT_ROOT_STEP1                          # 默认输出根目录
 TAR_PATTERNS = ("*.tar", "*.tar.gz", "*.tgz")     # 扫描压缩包的通配模式
@@ -656,7 +660,7 @@ def write_georef_json(output_path, scene, tar_path, vn_tif, sw_tif, native_size,
 
         "pipeline_note": ("Step 1 输出 native 网格全波段辐亮度；坏波段剔除后移到 Step 2；"
                           "正射推迟到 Step 3 统一做（带 30m DEM）"),
-        "script_version": "01_calibration_v2.1.0",
+        "script_version": "01_calibration_v2.2.0",
         "step_completed": "step1_calibration",
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -1015,7 +1019,7 @@ def main(argv=None):
     gdal.SetCacheMax(GDAL_CACHE_MB * 1024 * 1024)                     # 设置 GDAL 块缓存
 
     logger.info("=" * 60)                                # 打印分隔线
-    logger.info("ZY1E AHSI 步骤1 v2.1.0：辐射定标（全波段，坏波段剔除后移至步骤2）")   # 打印标题
+    logger.info("ZY1E AHSI 步骤1 v2.2.0：辐射定标（全波段，坏波段剔除后移至步骤2）")   # 打印标题
     logger.info("源目录  : %s", os.path.abspath(args.src))  # 打印源目录
     logger.info("输出目录: %s", out_root)                    # 打印输出目录
     logger.info("日志文件: %s", log_path)                    # 打印日志文件

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 02_atmospheric_correction.py
-ZY1E AHSI Step 2：K-T 气溶胶反演 + 6S/Py6S 大气校正（v2.1.2）
+ZY1E AHSI Step 2：K-T 气溶胶反演 + 6S/Py6S 大气校正（v2.2.0）
 
 v2.1.2 关键修复（2026-11-20，基于 6S 代码层面确定性证据）：
   ✅ 修复 K-T AOT 系统性高估（0.6 顶格 → ~0.3-0.4）：根因是旧版用"地表反射率=0 的
@@ -65,8 +65,12 @@ except ImportError as exc:                           # 解释器缺少 GDAL
 gdal.UseExceptions()                              # GDAL 出错时抛异常而不是返回空
 gdal.PushErrorHandler("CPLQuietErrorHandler")     # 屏蔽 GDAL 非致命错误的输出
 
-# v2.2.0：路径/环境统一收口到 pipeline_config.py
-import pipeline_config as _C
+# v2.2.0：路径/环境统一收口到仓库根 config.py
+import os as _os, sys as _sys
+_REPO_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+import config as _C
 
 # =================================================================
 # 配置区（按需修改）

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-03_orthorectify_clip_mosaic_batch.py
+03_ortho_clip_mosaic_v2.2.0.py
 ====================================
-ZY1-02E AHSI 步骤3（方案A：先光谱后几何）：RPC 正射 + 按研究区裁剪 + 云感知镶嵌
+ZY1-02E AHSI 步骤3（方案A：先光谱后几何，v2.2.0）：RPC 正射 + 按研究区裁剪 + 云感知镶嵌
 
 本步把步骤2 的**原始格网反射率**变成 5 个研究区（JLHK / LSK / LXJ / ZX / SC）
 可以直接进入步骤4（蚀变矿物提取）、步骤5（机器学习）的“分析就绪”数据：
@@ -108,8 +108,12 @@ gdal.UseExceptions()
 ogr.UseExceptions()
 gdal.PushErrorHandler("CPLQuietErrorHandler")
 
-# v2.2.0：路径/网格统一收口到 pipeline_config.py
-import pipeline_config as _C
+# v2.2.0：路径/网格统一收口到仓库根 config.py
+import os as _os, sys as _sys
+_REPO_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+import config as _C
 
 # ╔══════════════════════════════════════════════════════════════╗
 # ║  【配置区】按需修改                                            ║

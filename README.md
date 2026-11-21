@@ -32,16 +32,16 @@ conda activate hsi
 ```
 
 
-## 主流水线（pipeline_v2.2.0，推荐）
+## 主流水线（v2.2.0，推荐）
 
-`pipeline_v2.2.0/` 是当前主用的 3 步流水线，用集中配置文件 `pipeline_config.py`
-统一管理路径、环境与常量，前一步产物直接传给下一步：
+当前主用的 3 步流水线已并入各步骤文件夹（`01_calibration_badbands/`、`02_atmospheric_correction/`、`03_clip_by_area/`），
+用仓库根 `config.py` 统一管理路径、环境与常量，前一步产物直接传给下一步：
 
 | 步骤 | 脚本 | 作用 | 输出 |
 |---|---|---|---|
-| 1 | `01_calibration_v2.2.0.py` | L1A 解包 → 辐射定标（`L=Gain·DN+Bias`）→ DN=0 掩膜 → **RPC 足迹角点反算网格修正**（修正 v2.0 仿射往返恒等造成的约 2.4% 网格偏差） | `ZY1E_output_step1_v21/<景>/radiance_native.tif`（166 波段，原生网格 + RPC） |
-| 2 | `02_atmospheric_correction_v2.2.0.py` | **6S/Py6S 大气校正**：K-T 暗像元 AOT（Visual 兜底）→ **高程分块 6S**（按 DEM 逐像元海拔分 3 档分别算系数）→ 反射率反演 → 水汽带剔除 | `ZY1E_output_step2_v21/<景>/…_atmcorr.tif`（147 波段） |
-| 3 | `03_ortho_clip_mosaic_v2.2.0.py` | RPC 正射 + 研究区裁剪 + 云感知镶嵌：**主景优先 + 逐波段兜底**、剔除 6 个无用水汽带（147→**141**）、残留 NoData **光谱补值**（缺口 ≤3 线性插值、>3 拷贝兜底）、**S-G 3 点平滑 + 诊断峰核验** | `ZY1E_output_step3_v21/<区>/mosaic/mosaic_reflectance.tif`（141 波段） |
+| 1 | `01_calibration_badbands/01_calibration_v2.2.0.py` | L1A 解包 → 辐射定标（`L=Gain·DN+Bias`）→ DN=0 掩膜 → **RPC 足迹角点反算网格修正**（修正 v2.0 仿射往返恒等造成的约 2.4% 网格偏差） | `ZY1E_output_step1_v21/<景>/radiance_native.tif`（166 波段，原生网格 + RPC） |
+| 2 | `02_atmospheric_correction/02_atmospheric_correction_v2.2.0.py` | **6S/Py6S 大气校正**：K-T 暗像元 AOT（Visual 兜底）→ **高程分块 6S**（按 DEM 逐像元海拔分 3 档分别算系数）→ 反射率反演 → 水汽带剔除 | `ZY1E_output_step2_v21/<景>/…_atmcorr.tif`（147 波段） |
+| 3 | `03_clip_by_area/03_ortho_clip_mosaic_v2.2.0.py` | RPC 正射 + 研究区裁剪 + 云感知镶嵌：**主景优先 + 逐波段兜底**、剔除 6 个无用水汽带（147→**141**）、残留 NoData **光谱补值**（缺口 ≤3 线性插值、>3 拷贝兜底）、**S-G 3 点平滑 + 诊断峰核验** | `ZY1E_output_step3_v21/<区>/mosaic/mosaic_reflectance.tif`（141 波段） |
 
 v2.2.0 关键精度改进：
 
@@ -50,15 +50,15 @@ v2.2.0 关键精度改进：
 - **光谱连贯**：镶嵌时每个像元优先使用同一"主景"，仅缺失波段才逐波段补，减少跨景拼接台阶。
 - **光谱保真**：只剔除 6 个无信息水汽带（1.4253/1.4422/1.4590/1.4759/1.7954/1.8120 μm），2.0–2.5 μm 等有用波段保留并补值；S-G 平滑后 2200/2340/1100 nm 诊断吸收峰深度变化 0.0%。
 
-运行（先在 `pipeline_config.py` 把 `ROOT` 改成本机数据目录）：
+运行（先改仓库根 `config.py` 里的 `ROOT` 为本机数据目录）：
 
 ```powershell
-& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\01_calibration_v2.2.0.py
-& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\02_atmospheric_correction_v2.2.0.py
-& E:\ProgramData\anaconda3\envs\hsi\python.exe pipeline_v2.2.0\03_ortho_clip_mosaic_v2.2.0.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe 01_calibration_badbands\01_calibration_v2.2.0.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe 02_atmospheric_correction\02_atmospheric_correction_v2.2.0.py
+& E:\ProgramData\anaconda3\envs\hsi\python.exe 03_clip_by_area\03_ortho_clip_mosaic_v2.2.0.py
 ```
 
-> `pipeline/`（v2.0.0）与 `pipeline_v2.1.0/` 为历史版本，保留用于对照。
+> v2.0.0 / v2.1.0 版本分别在各步骤文件夹内（`*_v2.0.0.py` / `*_v2.1.0.py`），保留用于对照。
 
 ---
 
@@ -81,19 +81,28 @@ testcode/
 │   ├── 01_calibration_badbands_v1.0.2.py
 │   ├── 01_calibration_badbands_v1.0.3.py
 │   ├── 01_calibration_badbands_v1.0.4.py                            日志/标注
-│   └── 01_calibration_badbands_v1.0.5.py                            ← 当前版本（逐行行尾备注）
+│   ├── 01_calibration_badbands_v1.0.5.py                            ← 旧流水线当前版本
+│   ├── 01_calibration_v2.0.0.py                                     新流水线起点
+│   ├── 01_calibration_v2.1.0.py
+│   └── 01_calibration_v2.2.0.py                                     ← 主流水线当前版本
 ├── 02_atmospheric_correction/
 │   ├── 02_atmospheric_correction_v1.0.0.py
 │   ├── 02_atmcorrection_6s_v1.1.0.py
 │   ├── 02_atmospheric_correction_v1.1.1.py
 │   ├── 02_atmospheric_correction_v1.1.2.py
 │   ├── 02_atmospheric_correction_v1.1.3.py                          日志/标注
-│   └── 02_atmospheric_correction_v1.1.4.py                          ← 当前版本（逐行行尾备注）
+│   ├── 02_atmospheric_correction_v1.1.4.py                          ← 旧流水线当前版本
+│   ├── 02_atmospheric_correction_v2.0.0.py
+│   ├── 02_atmospheric_correction_v2.1.0.py
+│   └── 02_atmospheric_correction_v2.2.0.py                          ← 主流水线当前版本
 ├── 03_clip_by_area/
 │   ├── 03_clip_by_area_v2.0.py
 │   ├── 03_clip_by_area_v2.1.py                                      日志/标注
-│   ├── 03_clip_by_area_v2.2.py                                      ← 当前版本（逐行行尾备注）
-│   └── 03_orthorectify_clip_mosaic_v1.0.py                          区域镶嵌实现（未参与主链）
+│   ├── 03_clip_by_area_v2.2.py                                      ← 旧流水线当前版本
+│   ├── 03_orthorectify_clip_mosaic_v1.0.py                          区域镶嵌实现（未参与主链）
+│   ├── 03_ortho_clip_mosaic_v2.0.0.py
+│   ├── 03_ortho_clip_mosaic_v2.1.0.py
+│   └── 03_ortho_clip_mosaic_v2.2.0.py                               ← 主流水线当前版本
 ├── 04_aloh_mineral_extraction/
 │   ├── 04_aloh_mineral_extraction_v1.0.0.py                         原始版（仅支持 mosaic 输入）
 │   ├── 04_aloh_mineral_extraction_v1.1.0.py                         支持裁剪成果输入
@@ -109,6 +118,7 @@ testcode/
 │   ├── 05_mnf_ppi_mtmf_v1.1.2.py                                    代码标注
 │   ├── 05_mnf_ppi_mtmf_v1.1.3.py                                    精简开头注释
 │   └── 05_mnf_ppi_mtmf_v1.1.4.py                                    ← 当前版本（逐行行尾备注）
+├── config.py                                                        三步流水线共享配置（ROOT/PYTHON/输出目录/网格）
 ├── requirements.txt
 └── README.md
 ```
@@ -138,9 +148,9 @@ Al-OH 精简为 6 种（云母族 + 绿泥石族 + 蒙脱石）**，剔除黄玉
 | 步骤 | 当前使用 | 同目录其他版本 | 说明 |
 |---|---|---|---|
 | 00 | `00_extract_georeferenced_jpg_v1.0.2.py` | v1.0.0 / v1.0.1 | v1.0.2 逐行行尾备注 |
-| 01 | `01_calibration_badbands_v1.0.5.py` | v1.0.0 / v1.0.1 / v1.0.2 / v1.0.3 / v1.0.4 | v1.0.5 逐行行尾备注 |
-| 02 | `02_atmospheric_correction_v1.1.4.py` | v1.1.3、v1.1.2、v1.1.1、v1.0.0、`02_atmcorrection_6s_v1.1.0.py` | v1.1.4 逐行行尾备注 |
-| 03 | `03_clip_by_area_v2.2.py` | v2.1、v2.0、`03_orthorectify_clip_mosaic_v1.0.py` | v2.2 逐行行尾备注；镶嵌版未参与主链 |
+| 01 | `01_calibration_v2.2.0.py`（主流水线） | v2.0.0 / v2.1.0；旧版 `01_calibration_badbands_v1.0.0–v1.0.5` | 旧版为早期单步链 |
+| 02 | `02_atmospheric_correction_v2.2.0.py`（主流水线） | v2.0.0 / v2.1.0；旧版 `02_atmospheric_correction_v1.0.0–v1.1.4`、`02_atmcorrection_6s_v1.1.0.py` | 旧版为早期单步链 |
+| 03 | `03_ortho_clip_mosaic_v2.2.0.py`（主流水线） | v2.0.0 / v2.1.0；旧版 `03_clip_by_area_v2.0–v2.2.py`、`03_orthorectify_clip_mosaic_v1.0.py` | 旧版为早期单步链；镶嵌版未参与主链 |
 | 04 | `04_aloh_mineral_extraction_v1.1.5.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 / v1.1.4 | v1.1.5 精简矿物清单（云母族+绿泥石族+蒙脱石） |
 | 05 | `05_mnf_ppi_mtmf_v1.1.4.py` | v1.0.0 / v1.1.0 / v1.1.1 / v1.1.2 / v1.1.3 | v1.1.4 逐行行尾备注 |
 
